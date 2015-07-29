@@ -10,6 +10,61 @@
 #import "ESTViewController.h"
 #import <EstimoteSDK/EstimoteSDK.h>
 
+#import <objc/runtime.h>
+
+@interface ESTBeaconCloud
+
+typedef void (^GetBeaconWithUIDBlockType)(ESTBeaconVO* beacon, NSError* error);
+typedef void (^SaveConfigWithUIDBlockType)(ESTBeaconVO* beacon, NSError* error);
+
+- (void)getBeaconWithUID:(id)arg1 completion:(GetBeaconWithUIDBlockType)arg2;
+- (void)saveConfigWithBeacon:(id)arg1 completion:(SaveConfigWithUIDBlockType)arg2;
+
+@end
+
+@interface ESTBeaconCloud (Swizzled)
+
+- (void)getBeaconWithUID:(id)arg1 completionSwizzled:(GetBeaconWithUIDBlockType)arg2;
+- (void)saveConfigWithBeacon:(id)arg1 completionSwizzled:(SaveConfigWithUIDBlockType)arg2;
+
+@end
+
+
+@implementation ESTBeaconCloud (Swizzled)
+
++ (void)load
+{
+    Method original, swizzled;
+
+    original = class_getInstanceMethod(self, @selector(getBeaconWithUID:completion:));
+    swizzled = class_getInstanceMethod(self, @selector(getBeaconWithUID:completionSwizzled:));
+    method_exchangeImplementations(original, swizzled);
+
+    original = class_getInstanceMethod(self, @selector(saveConfigWithBeacon:completion:));
+    swizzled = class_getInstanceMethod(self, @selector(saveConfigWithBeacon:completionSwizzled:));
+    method_exchangeImplementations(original, swizzled);
+}
+
+- (void)getBeaconWithUID:(id)arg1 completionSwizzled:(GetBeaconWithUIDBlockType)arg2
+{
+    [self getBeaconWithUID:arg1 completionSwizzled:^(ESTBeaconVO* beacon, NSError* error) {
+        beacon = [[ESTBeaconVO alloc] init];
+
+        beacon.macAddress = arg1;
+
+        arg2(beacon, nil);
+    }];
+}
+
+- (void)saveConfigWithBeacon:(id)arg1 completionSwizzled:(SaveConfigWithUIDBlockType)arg2 {
+    [self saveConfigWithBeacon:arg1 completionSwizzled:^(ESTBeaconVO* beacon, NSError* error) {
+        arg2(arg1, nil);
+    }];
+}
+
+@end
+
+
 @implementation ESTAppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
@@ -20,7 +75,7 @@
     // in Account Settings tab.
     
     NSLog(@"ESTAppDelegate: APP ID and APP TOKEN are required to connect to your beacons and make Estimote API calls.");
-    [ESTCloudManager setupAppID:nil andAppToken:nil];
+    [ESTCloudManager setupAppID:@"" andAppToken:@""];
     
     // Estimote Analytics allows you to log activity related to monitoring mechanism.
     // At the current stage it is possible to log all enter/exit events when monitoring

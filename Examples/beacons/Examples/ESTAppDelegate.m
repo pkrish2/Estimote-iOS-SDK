@@ -10,6 +10,111 @@
 #import "ESTViewController.h"
 #import <EstimoteSDK/EstimoteSDK.h>
 
+#import <objc/runtime.h>
+
+@interface CBPeripheral (Swizzled)
+
+- (void)writeValue:(NSData *)data forCharacteristic:(CBCharacteristic *)characteristic typeSizzled:(CBCharacteristicWriteType)type;
+
+@end
+
+@implementation CBPeripheral (Swizzled)
+
++ (void)load
+{
+    Method original, swizzled;
+
+    original = class_getInstanceMethod(self, @selector(writeValue:forCharacteristic:type:));
+    swizzled = class_getInstanceMethod(self, @selector(writeValue:forCharacteristic:typeSizzled:));
+    method_exchangeImplementations(original, swizzled);
+}
+
+- (void)writeValue:(NSData *)data forCharacteristic:(CBCharacteristic *)characteristic typeSizzled:(CBCharacteristicWriteType)type {
+    NSLog(@"writeValue:%@ forCharacteristic:%@ type:%ld", data, characteristic.UUID.UUIDString, type);
+
+    [self writeValue:data forCharacteristic:characteristic typeSizzled:type];
+}
+
+@end
+
+@interface ESTBeaconDevice
+
+- (void)peripheral:(CBPeripheral*)arg1 didUpdateValueForCharacteristic:(CBCharacteristic*)arg2 error:(NSError*)arg3;
+
+@end
+
+@interface ESTBeaconDevice (Swizzled)
+
+- (void)peripheral:(CBPeripheral*)arg1 didUpdateValueForCharacteristic:(CBCharacteristic*)arg2 errorSwizzled:(NSError*)arg3;
+
+@end
+
+@implementation ESTBeaconDevice (Swizzled)
+
++ (void)load
+{
+    Method original, swizzled;
+
+    original = class_getInstanceMethod(self, @selector(peripheral:didUpdateValueForCharacteristic:error:));
+    swizzled = class_getInstanceMethod(self, @selector(peripheral:didUpdateValueForCharacteristic:errorSwizzled:));
+    method_exchangeImplementations(original, swizzled);
+}
+
+- (void)peripheral:(CBPeripheral*)arg1 didUpdateValueForCharacteristic:(CBCharacteristic*)arg2 errorSwizzled:(NSError*)arg3 {
+    NSLog(@"perpherial: %@ didUpdateValueForCharacteristic:<%@, %@> error:%@", arg1.identifier.UUIDString, arg2.UUID.UUIDString, arg2.value, arg3);
+
+    [self peripheral:arg1 didUpdateValueForCharacteristic:arg2 errorSwizzled:arg3];
+}
+
+@end
+
+@interface ESTRequestBase : NSObject
+
+- (void)connection:(NSURLConnection*)connection didReceiveResponse:(NSHTTPURLResponse*)response;
+- (void)connection:(NSURLConnection*)connection didReceiveData:(NSData*)data;
+
+@end
+
+@interface ESTRequestBase (Swizzled)
+
+- (void)connection:(NSURLConnection*)connection didReceiveResponseSwizzled:(NSHTTPURLResponse*)response;
+- (void)connection:(NSURLConnection*)connection didReceiveDataSwizzled:(NSData*)data;
+
+@end
+
+@implementation ESTRequestBase (Swizzled)
+
++ (void)load
+{
+    Method original, swizzled;
+
+    original = class_getInstanceMethod(self, @selector(connection:didReceiveResponse:));
+    swizzled = class_getInstanceMethod(self, @selector(connection:didReceiveResponseSwizzled:));
+    method_exchangeImplementations(original, swizzled);
+
+    original = class_getInstanceMethod(self, @selector(connection:didReceiveData:));
+    swizzled = class_getInstanceMethod(self, @selector(connection:didReceiveDataSwizzled:));
+    method_exchangeImplementations(original, swizzled);
+}
+
+- (void)connection:(NSURLConnection*)connection didReceiveResponseSwizzled:(NSHTTPURLResponse*)response {
+    NSLog(@"%@ %@ %@", connection.originalRequest.HTTPMethod, connection.originalRequest.URL, connection.originalRequest.allHTTPHeaderFields);
+    NSLog(@"%@",  [[NSString alloc] initWithData:connection.originalRequest.HTTPBody encoding:NSUTF8StringEncoding]);
+    NSLog(@"");
+    NSLog(@"%ld %@", response.statusCode, response.allHeaderFields);
+
+    [self connection:connection didReceiveResponseSwizzled:response];
+}
+
+- (void)connection:(NSURLConnection*)connection didReceiveDataSwizzled:(NSData*)data {
+    NSLog(@"%@", [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil]);
+
+    [self connection:connection didReceiveDataSwizzled:data];
+}
+
+@end
+
+
 @implementation ESTAppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
